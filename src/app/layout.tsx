@@ -4,6 +4,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Deploy(it) Admin Portal",
   description: "DevOps Lab Management System",
+  icons: {
+    icon: "/devops.png",
+  },
 };
 
 import AuthGuard from "@/components/AuthGuard";

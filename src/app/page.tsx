@@ -41,7 +41,7 @@ export default function Dashboard() {
       <header style={headerStyle}>
         <div style={{ animation: "slideIn 0.5s ease" }}>
           <h1 style={titleStyle}>Admin <span className="text-gradient">Console</span></h1>
-          <p style={subtitleStyle}>Centralized management for the DeployIt laboratory.</p>
+          <p style={subtitleStyle}>Centralized management for the DeployIt.</p>
         </div>
         <div style={dateStyle}>{new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
       </header>
