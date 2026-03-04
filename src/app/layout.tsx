@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
 
 export const metadata: Metadata = {
-  title: "DeployIt Admin Portal",
+  title: "Deploy(it) Admin Portal",
   description: "DevOps Lab Management System",
 };
+
+import AuthGuard from "@/components/AuthGuard";
+import LayoutContent from "@/components/LayoutContent";
 
 export default function RootLayout({
   children,
@@ -15,12 +17,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <div className="admin-layout">
-          <Sidebar />
-          <main className="main-content">
+        <AuthGuard>
+          <LayoutContent>
             {children}
-          </main>
-        </div>
+          </LayoutContent>
+        </AuthGuard>
       </body>
     </html>
   );

@@ -2,22 +2,29 @@
 
 import React, { useEffect, useState } from "react";
 
-const API_URL = "http://localhost:8080";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
     totalChallenges: 0,
+    activeUsers: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/challenges`);
-        const challenges = await response.json();
+        const [challengesRes, usersRes] = await Promise.all([
+          fetch(`${API_URL}/api/challenges`),
+          fetch(`${API_URL}/api/users`)
+        ]);
+
+        const challenges = await challengesRes.json();
+        const users = await usersRes.json();
 
         setStats({
           totalChallenges: challenges?.length || 0,
+          activeUsers: users?.length || 0,
         });
       } catch (error) {
         console.error("Failed to fetch dashboard data", error);
@@ -41,15 +48,9 @@ export default function Dashboard() {
 
       <section style={statsGridStyle}>
         <StatCard title="Active Challenges" value={stats.totalChallenges} icon="🏆" delay="0.1s" />
+        <StatCard title="Registered Users" value={stats.activeUsers} icon="👥" delay="0.2s" />
       </section>
 
-      <div className="glass-panel" style={{ padding: "2.5rem", animation: "fadeIn 0.6s ease", textAlign: "center" }}>
-        <h2 style={{ marginBottom: "1rem" }}>Welcome to the Admin Portal</h2>
-        <p style={{ color: "#94a3b8", maxWidth: "600px", margin: "0 auto" }}>
-          Use the registry to manage technical labs and monitor ecosystem health.
-          Additional modules can be enabled from the system configuration.
-        </p>
-      </div>
     </div>
   );
 }
@@ -64,8 +65,9 @@ const StatCard = ({ title, value, icon, delay, color }: any) => (
     animation: `fadeIn 0.5s ease ${delay} backwards`,
     position: "relative",
     overflow: "hidden",
-    maxWidth: "400px",
-    margin: "0 auto"
+    flex: 1,
+    minWidth: "250px",
+    maxWidth: "400px"
   }}>
     <div style={{ fontSize: "2.5rem" }}>{icon}</div>
     <div style={{ fontSize: "1rem", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em" }}>{title}</div>
@@ -109,6 +111,8 @@ const dateStyle: React.CSSProperties = {
 
 const statsGridStyle: React.CSSProperties = {
   display: "flex",
+  gap: "2rem",
   justifyContent: "center",
   marginBottom: "3rem",
+  flexWrap: "wrap"
 };

@@ -1,11 +1,30 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const Sidebar = () => {
     const pathname = usePathname();
+    const router = useRouter();
+    const [adminName, setAdminName] = useState("Admin User");
+
+    useEffect(() => {
+        const userStr = localStorage.getItem("admin_user");
+        if (userStr) {
+            try {
+                const user = JSON.parse(userStr);
+                setAdminName(user.displayName || "Admin User");
+            } catch (e) {
+                console.error("Failed to parse user data", e);
+            }
+        }
+    }, []);
+
+    const handleLogout = () => {
+        localStorage.removeItem("admin_user");
+        router.push("/login");
+    };
 
     const menuItems = [
         { name: "Dashboard", path: "/", icon: "📊" },
@@ -15,16 +34,16 @@ const Sidebar = () => {
     return (
         <aside style={sidebarStyle}>
             <div style={logoContainerStyle}>
-                <div style={logoIconStyle}>
-                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2.5" fill="none">
-                        <polyline points="16 18 22 12 16 6"></polyline>
-                        <polyline points="8 6 2 12 8 18"></polyline>
-                    </svg>
-                </div>
-                <h1 style={logoTextStyle}>
-                    Deploy<span style={{ color: "var(--primary)" }}>It</span>
-                    <span style={adminBadgeStyle}>ADMIN</span>
-                </h1>
+                <img src="/deployit-logo.png" alt="Deploy(it) Logo" style={{ height: "32px", width: "auto" }} />
+                <span style={{
+                    ...adminBadgeStyle,
+                    marginLeft: "0.5rem",
+                    marginTop: "0",
+                    background: "rgba(255, 255, 255, 0.05)",
+                    padding: "2px 6px",
+                    borderRadius: "4px",
+                    fontSize: "0.55rem"
+                }}>ADMIN</span>
             </div>
 
             <nav style={navStyle}>
@@ -48,10 +67,21 @@ const Sidebar = () => {
 
             <div style={footerStyle}>
                 <div style={userCardStyle}>
-                    <div style={avatarStyle}>A</div>
+                    <div style={avatarStyle}>{adminName[0].toUpperCase()}</div>
                     <div style={userDocStyle}>
-                        <div style={{ fontWeight: 600, fontSize: "0.85rem" }}>Admin User</div>
-                        <div style={{ fontSize: "0.75rem", color: "#64748b" }}>System Manager</div>
+                        <div style={{ fontWeight: 600, fontSize: "0.85rem" }}>{adminName}</div>
+                        <div
+                            onClick={handleLogout}
+                            style={{
+                                fontSize: "0.75rem",
+                                color: "var(--danger, #ef4444)",
+                                cursor: "pointer",
+                                fontWeight: 700,
+                                marginTop: "2px"
+                            }}
+                        >
+                            Log Out ↩
+                        </div>
                     </div>
                 </div>
             </div>

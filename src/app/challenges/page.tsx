@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 
-const API_URL = "http://localhost:8080";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 export default function ChallengesAdmin() {
     const [challenges, setChallenges] = useState<any[]>([]);
