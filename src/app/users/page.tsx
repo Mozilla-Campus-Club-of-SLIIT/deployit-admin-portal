@@ -1,17 +1,19 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { adminAuthHeaders } from "@/lib/adminAuth";
 
-const API_URL = "http://localhost:8080";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 export default function UserBase() {
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Note: Backend endpoint /api/users needs to be implemented
     const fetchUsers = async () => {
         try {
-            const response = await fetch(`${API_URL}/api/users`);
+            const response = await fetch(`${API_URL}/api/users`, {
+                headers: adminAuthHeaders(),
+            });
             if (response.ok) {
                 const data = await response.json();
                 setUsers(data || []);

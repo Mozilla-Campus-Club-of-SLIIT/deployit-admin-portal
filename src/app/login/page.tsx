@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { saveAdminToken, clearAdminSession } from "@/lib/adminAuth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -27,10 +28,14 @@ export default function LoginPage() {
             if (res.ok) {
                 const data = await res.json();
                 if (data.user.role === "admin") {
-                    // Store user record in localStorage (Basic Auth)
+                    // Store JWT token for all subsequent admin API calls
+                    if (data.token) {
+                        saveAdminToken(data.token);
+                    }
                     localStorage.setItem("admin_user", JSON.stringify(data.user));
                     router.push("/");
                 } else {
+                    clearAdminSession();
                     setError("Access denied. Admin privileges required.");
                 }
             } else {

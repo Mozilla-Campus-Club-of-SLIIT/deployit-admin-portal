@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { getAdminToken, clearAdminSession, isTokenExpired } from "@/lib/adminAuth";
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
     const [authorized, setAuthorized] = useState(false);
@@ -9,7 +10,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
 
     useEffect(() => {
-        // Skip check for login page itself
         if (pathname === "/login") {
             setAuthorized(true);
             return;
@@ -17,7 +17,17 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
         const checkAuth = () => {
             const userStr = localStorage.getItem("admin_user");
-            if (!userStr) {
+            const token = getAdminToken();
+
+            if (!userStr || !token) {
+                clearAdminSession();
+                router.push("/login");
+                return;
+            }
+
+            // Check JWT expiry client-side (backend will also reject expired tokens)
+            if (isTokenExpired(token)) {
+                clearAdminSession();
                 router.push("/login");
                 return;
             }
@@ -25,13 +35,13 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
             try {
                 const user = JSON.parse(userStr);
                 if (user.role !== "admin") {
-                    localStorage.removeItem("admin_user");
+                    clearAdminSession();
                     router.push("/login");
                 } else {
                     setAuthorized(true);
                 }
-            } catch (err) {
-                localStorage.removeItem("admin_user");
+            } catch {
+                clearAdminSession();
                 router.push("/login");
             }
         };
@@ -39,7 +49,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         checkAuth();
     }, [pathname, router]);
 
-    // Show nothing while checking (or a loader)
     if (!authorized && pathname !== "/login") {
         return (
             <div style={{

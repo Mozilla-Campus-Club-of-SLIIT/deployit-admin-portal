@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { adminAuthHeaders } from "@/lib/adminAuth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -34,6 +35,32 @@ export default function ChallengesAdmin() {
         }
     };
 
+    const toggleChallenge = async (id: string, currentLocked: boolean) => {
+        // Optimistic UI update
+        setChallenges(prev =>
+            prev.map(c => c.id === id ? { ...c, locked: !currentLocked } : c)
+        );
+        try {
+            const res = await fetch(`${API_URL}/api/challenges/toggle?id=${encodeURIComponent(id)}`, {
+                method: "PATCH",
+                headers: adminAuthHeaders(),
+            });
+            if (!res.ok) {
+                // Revert on failure
+                setChallenges(prev =>
+                    prev.map(c => c.id === id ? { ...c, locked: currentLocked } : c)
+                );
+                console.error("Toggle failed:", await res.text());
+            }
+        } catch (e) {
+            // Revert on network error
+            setChallenges(prev =>
+                prev.map(c => c.id === id ? { ...c, locked: currentLocked } : c)
+            );
+            console.error(e);
+        }
+    };
+
     useEffect(() => {
         fetchChallenges();
     }, []);
@@ -51,7 +78,7 @@ export default function ChallengesAdmin() {
 
             const res = await fetch(`${API_URL}/api/challenges/add`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: adminAuthHeaders(), // JWT required — admin-only route
                 body: JSON.stringify(challengeData)
             });
 
@@ -95,17 +122,35 @@ export default function ChallengesAdmin() {
             ) : (
                 <div style={gridStyle}>
                     {challenges.map((c: any) => (
-                        <div key={c.id} className="glass-panel" style={cardStyle}>
+                        <div key={c.id} className="glass-panel" style={{
+                            ...cardStyle,
+                            opacity: c.locked ? 0.55 : 1,
+                            transition: "opacity 0.3s ease"
+                        }}>
                             <div style={cardHeaderStyle}>
-                                <span style={{
-                                    padding: "0.25rem 0.75rem",
-                                    borderRadius: "20px",
-                                    fontSize: "0.65rem",
-                                    fontWeight: 800,
-                                    background: c.difficulty === "Easy" ? "rgba(16, 185, 129, 0.1)" : "rgba(245, 158, 11, 0.1)",
-                                    color: c.difficulty === "Easy" ? "#10b981" : "#f59e0b",
-                                    textTransform: "uppercase"
-                                }}>{c.difficulty}</span>
+                                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                                    <span style={{
+                                        padding: "0.25rem 0.75rem",
+                                        borderRadius: "20px",
+                                        fontSize: "0.65rem",
+                                        fontWeight: 800,
+                                        background: c.difficulty === "Easy" ? "rgba(16, 185, 129, 0.1)" : "rgba(245, 158, 11, 0.1)",
+                                        color: c.difficulty === "Easy" ? "#10b981" : "#f59e0b",
+                                        textTransform: "uppercase"
+                                    }}>{c.difficulty}</span>
+                                    {c.locked && (
+                                        <span style={{
+                                            padding: "0.25rem 0.6rem",
+                                            borderRadius: "20px",
+                                            fontSize: "0.6rem",
+                                            fontWeight: 800,
+                                            background: "rgba(239, 68, 68, 0.15)",
+                                            color: "#ef4444",
+                                            textTransform: "uppercase",
+                                            letterSpacing: "0.05em"
+                                        }}>DISABLED</span>
+                                    )}
+                                </div>
                                 <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--primary)" }}>{c.score} PTS</span>
                             </div>
                             <h3 style={{ margin: "1rem 0 0.5rem 0", fontSize: "1.1rem" }}>{c.title}</h3>
@@ -114,6 +159,48 @@ export default function ChallengesAdmin() {
                                 {(c.tags || []).map((t: string) => (
                                     <span key={t} style={tagStyle}>#{t}</span>
                                 ))}
+                            </div>
+
+                            {/* Enable / Disable toggle */}
+                            <div style={{
+                                marginTop: "1.25rem",
+                                paddingTop: "1rem",
+                                borderTop: "1px solid rgba(255,255,255,0.06)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between"
+                            }}>
+                                <span style={{ fontSize: "0.75rem", fontWeight: 600, color: c.locked ? "#ef4444" : "#10b981", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                                    {c.locked ? "Challenge Disabled" : "Challenge Active"}
+                                </span>
+                                <button
+                                    onClick={() => toggleChallenge(c.id, !!c.locked)}
+                                    title={c.locked ? "Enable this challenge" : "Disable this challenge"}
+                                    style={{
+                                        position: "relative",
+                                        width: "44px",
+                                        height: "24px",
+                                        borderRadius: "12px",
+                                        border: "none",
+                                        cursor: "pointer",
+                                        background: c.locked ? "rgba(239,68,68,0.3)" : "rgba(16,185,129,0.4)",
+                                        transition: "background 0.25s ease",
+                                        flexShrink: 0,
+                                    }}
+                                >
+                                    <span style={{
+                                        position: "absolute",
+                                        top: "3px",
+                                        left: c.locked ? "3px" : "22px",
+                                        width: "18px",
+                                        height: "18px",
+                                        borderRadius: "50%",
+                                        background: c.locked ? "#ef4444" : "#10b981",
+                                        transition: "left 0.25s ease",
+                                        display: "block",
+                                        boxShadow: "0 1px 4px rgba(0,0,0,0.4)"
+                                    }} />
+                                </button>
                             </div>
                         </div>
                     ))}
