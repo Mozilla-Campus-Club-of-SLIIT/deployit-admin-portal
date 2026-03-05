@@ -10,12 +10,14 @@ export default function ChallengesAdmin() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [availableCategories, setAvailableCategories] = useState<string[]>(["Linux", "Bash", "Docker", "Kubernetes", "Security", "DevOps"]);
+    const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({
         id: "",
         title: "",
         description: "",
         image: "ubuntu:22.04",
         score: 10,
+        timeLimit: 300,
         difficulty: "Easy",
         tags: [] as string[],
         startScript: "",
@@ -71,9 +73,10 @@ export default function ChallengesAdmin() {
             const slug = formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
             const challengeData = {
                 ...formData,
-                id: `${slug}-${Math.random().toString(36).substring(2, 7)}`,
+                id: formData.id || `${slug}-${Math.random().toString(36).substring(2, 7)}`,
                 tags: formData.tags,
-                score: Number(formData.score)
+                score: Number(formData.score),
+                timeLimit: Number(formData.timeLimit)
             };
 
             const res = await fetch(`${API_URL}/api/challenges/add`, {
@@ -91,11 +94,13 @@ export default function ChallengesAdmin() {
                     description: "",
                     image: "ubuntu:22.04",
                     score: 10,
+                    timeLimit: 300,
                     difficulty: "Easy",
                     tags: [],
                     startScript: "",
                     evaluationScript: ""
                 });
+                setIsEditing(false);
             }
         } catch (err) {
             console.error(err);
@@ -110,7 +115,14 @@ export default function ChallengesAdmin() {
                     <p style={{ color: "#64748b" }}>Manage and deploy new technical labs to the ecosystem.</p>
                 </div>
                 <button
-                    onClick={() => setShowModal(true)}
+                    onClick={() => {
+                        setIsEditing(false);
+                        setFormData({
+                            id: "", title: "", description: "", image: "ubuntu:22.04", score: 10, timeLimit: 300, difficulty: "Easy",
+                            tags: [], startScript: "", evaluationScript: ""
+                        });
+                        setShowModal(true);
+                    }}
                     style={addButtonStyle}
                 >
                     + Create New Challenge
@@ -162,45 +174,78 @@ export default function ChallengesAdmin() {
                             </div>
 
                             {/* Enable / Disable toggle */}
+
                             <div style={{
                                 marginTop: "1.25rem",
                                 paddingTop: "1rem",
                                 borderTop: "1px solid rgba(255,255,255,0.06)",
                                 display: "flex",
                                 alignItems: "center",
-                                justifyContent: "space-between"
+                                gap: "1rem"
                             }}>
-                                <span style={{ fontSize: "0.75rem", fontWeight: 600, color: c.locked ? "#ef4444" : "#10b981", letterSpacing: "0.04em", textTransform: "uppercase" }}>
-                                    {c.locked ? "Challenge Disabled" : "Challenge Active"}
-                                </span>
                                 <button
-                                    onClick={() => toggleChallenge(c.id, !!c.locked)}
-                                    title={c.locked ? "Enable this challenge" : "Disable this challenge"}
+                                    onClick={() => {
+                                        setFormData({
+                                            id: c.id,
+                                            title: c.title,
+                                            description: c.description,
+                                            image: c.image || "ubuntu:22.04",
+                                            score: c.score || 10,
+                                            timeLimit: c.timeLimit || 300,
+                                            difficulty: c.difficulty || "Easy",
+                                            tags: c.tags || [],
+                                            startScript: c.startupScript || "",
+                                            evaluationScript: c.endScript || ""
+                                        });
+                                        setIsEditing(true);
+                                        setShowModal(true);
+                                    }}
                                     style={{
-                                        position: "relative",
-                                        width: "44px",
-                                        height: "24px",
-                                        borderRadius: "12px",
-                                        border: "none",
+                                        background: "transparent",
+                                        color: "var(--primary)",
+                                        border: "1px solid var(--primary)",
+                                        padding: "0.4rem 1rem",
+                                        borderRadius: "6px",
+                                        fontSize: "0.75rem",
+                                        fontWeight: 700,
                                         cursor: "pointer",
-                                        background: c.locked ? "rgba(239,68,68,0.3)" : "rgba(16,185,129,0.4)",
-                                        transition: "background 0.25s ease",
-                                        flexShrink: 0,
                                     }}
                                 >
-                                    <span style={{
-                                        position: "absolute",
-                                        top: "3px",
-                                        left: c.locked ? "3px" : "22px",
-                                        width: "18px",
-                                        height: "18px",
-                                        borderRadius: "50%",
-                                        background: c.locked ? "#ef4444" : "#10b981",
-                                        transition: "left 0.25s ease",
-                                        display: "block",
-                                        boxShadow: "0 1px 4px rgba(0,0,0,0.4)"
-                                    }} />
+                                    Edit
                                 </button>
+                                <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                    <span style={{ fontSize: "0.75rem", fontWeight: 600, color: c.locked ? "#ef4444" : "#10b981", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                                        {c.locked ? "Disabled" : "Active"}
+                                    </span>
+                                    <button
+                                        onClick={() => toggleChallenge(c.id, !!c.locked)}
+                                        title={c.locked ? "Enable this challenge" : "Disable this challenge"}
+                                        style={{
+                                            position: "relative",
+                                            width: "44px",
+                                            height: "24px",
+                                            borderRadius: "12px",
+                                            border: "none",
+                                            cursor: "pointer",
+                                            background: c.locked ? "rgba(239,68,68,0.3)" : "rgba(16,185,129,0.4)",
+                                            transition: "background 0.25s ease",
+                                            flexShrink: 0,
+                                        }}
+                                    >
+                                        <span style={{
+                                            position: "absolute",
+                                            top: "3px",
+                                            left: c.locked ? "3px" : "22px",
+                                            width: "18px",
+                                            height: "18px",
+                                            borderRadius: "50%",
+                                            background: c.locked ? "#ef4444" : "#10b981",
+                                            transition: "left 0.25s ease",
+                                            display: "block",
+                                            boxShadow: "0 1px 4px rgba(0,0,0,0.4)"
+                                        }} />
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ))}
@@ -210,7 +255,7 @@ export default function ChallengesAdmin() {
             {showModal && (
                 <div style={modalOverlayStyle}>
                     <div className="glass-panel" style={modalContentStyle}>
-                        <h2 style={{ marginBottom: "1.5rem" }}>Deploy New Challenge</h2>
+                        <h2 style={{ marginBottom: "1.5rem" }}>{isEditing ? "Edit Challenge" : "Deploy New Challenge"}</h2>
                         <form onSubmit={handleAddChallenge} style={formStyle}>
 
                             <div style={formGroupStyle}>
@@ -231,6 +276,15 @@ export default function ChallengesAdmin() {
                                         style={inputStyle}
                                         value={formData.score}
                                         onChange={e => setFormData({ ...formData, score: Number(e.target.value) })}
+                                    />
+                                </div>
+                                <div style={formGroupStyle}>
+                                    <label style={labelStyle}>Time Limit (Seconds)</label>
+                                    <input
+                                        type="number"
+                                        style={inputStyle}
+                                        value={formData.timeLimit}
+                                        onChange={e => setFormData({ ...formData, timeLimit: Number(e.target.value) })}
                                     />
                                 </div>
                                 <div style={formGroupStyle}>

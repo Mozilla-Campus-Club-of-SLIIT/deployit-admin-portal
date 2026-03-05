@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { adminAuthHeaders } from "@/lib/adminAuth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -16,11 +17,12 @@ export default function Dashboard() {
       try {
         const [challengesRes, usersRes] = await Promise.all([
           fetch(`${API_URL}/api/challenges`),
-          fetch(`${API_URL}/api/users`)
+          fetch(`${API_URL}/api/users`, { headers: adminAuthHeaders() })
         ]);
 
         const challenges = await challengesRes.json();
-        const users = await usersRes.json();
+        const usersResText = await usersRes.text();
+        const users = usersResText ? JSON.parse(usersResText) : [];
 
         setStats({
           totalChallenges: challenges?.length || 0,
