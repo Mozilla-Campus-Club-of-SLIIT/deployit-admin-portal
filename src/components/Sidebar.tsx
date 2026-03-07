@@ -32,8 +32,8 @@ const Sidebar = () => {
     ];
 
     return (
-        <aside style={sidebarStyle}>
-            <div style={logoContainerStyle}>
+        <aside style={sidebarStyle} className="mobile-sidebar">
+            <div style={logoContainerStyle} className="mobile-logo-container">
                 <img src="/deployit-logo.png" alt="Deploy(it) Logo" style={{ height: "32px", width: "auto" }} />
                 <span style={{
                     ...adminBadgeStyle,
@@ -46,12 +46,12 @@ const Sidebar = () => {
                 }}>ADMIN</span>
             </div>
 
-            <nav style={navStyle}>
+            <nav style={navStyle} className="mobile-nav">
                 {menuItems.map((item) => {
                     const isActive = pathname === item.path;
                     return (
                         <Link key={item.path} href={item.path}>
-                            <div style={{
+                            <div className="mobile-nav-item" data-active={isActive} style={{
                                 ...navItemStyle,
                                 background: isActive ? "rgba(245, 158, 11, 0.1)" : "transparent",
                                 color: isActive ? "var(--primary)" : "#94a3b8",
@@ -65,7 +65,7 @@ const Sidebar = () => {
                 })}
             </nav>
 
-            <div style={footerStyle}>
+            <div style={footerStyle} className="mobile-footer">
                 <div style={userCardStyle}>
                     <div style={avatarStyle}>{adminName[0].toUpperCase()}</div>
                     <div style={userDocStyle}>

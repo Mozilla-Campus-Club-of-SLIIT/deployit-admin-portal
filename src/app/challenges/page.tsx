@@ -9,6 +9,11 @@ export default function ChallengesAdmin() {
     const [challenges, setChallenges] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
+    const [deleteModal, setDeleteModal] = useState({ show: false, id: "", title: "" });
+    const [currentPage, setCurrentPage] = useState(1);
+    const [filterCategory, setFilterCategory] = useState("All");
+    const [searchTerm, setSearchTerm] = useState("");
+    const ITEMS_PER_PAGE = 6;
     const [availableCategories, setAvailableCategories] = useState<string[]>(["Linux", "Bash", "Docker", "Kubernetes", "Security", "DevOps"]);
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({
@@ -20,8 +25,8 @@ export default function ChallengesAdmin() {
         timeLimit: 300,
         difficulty: "Easy",
         tags: [] as string[],
-        startScript: "",
-        evaluationScript: ""
+        startupScript: "",
+        endScript: ""
     });
     const [newCategoryInput, setNewCategoryInput] = useState("");
 
@@ -63,6 +68,26 @@ export default function ChallengesAdmin() {
         }
     };
 
+    const confirmDeleteChallenge = async () => {
+        if (!deleteModal.id) return;
+        try {
+            const res = await fetch(`${API_URL}/api/challenges/delete?id=${encodeURIComponent(deleteModal.id)}`, {
+                method: "DELETE",
+                headers: adminAuthHeaders(),
+            });
+            if (res.ok) {
+                setChallenges(prev => prev.filter(c => c.id !== deleteModal.id));
+                setDeleteModal({ show: false, id: "", title: "" });
+            } else {
+                console.error("Delete failed:", await res.text());
+                alert("Failed to delete challenge.");
+            }
+        } catch (e) {
+            console.error("Delete error:", e);
+            alert("Network error. Could not delete challenge.");
+        }
+    };
+
     useEffect(() => {
         fetchChallenges();
     }, []);
@@ -97,8 +122,8 @@ export default function ChallengesAdmin() {
                     timeLimit: 300,
                     difficulty: "Easy",
                     tags: [],
-                    startScript: "",
-                    evaluationScript: ""
+                    startupScript: "",
+                    endScript: ""
                 });
                 setIsEditing(false);
             }
@@ -109,7 +134,7 @@ export default function ChallengesAdmin() {
 
     return (
         <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-            <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
+            <header className="mobile-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
                 <div>
                     <h1 style={{ fontSize: "2rem", fontWeight: 900 }}>Challenge <span className="text-gradient">Registry</span></h1>
                     <p style={{ color: "#64748b" }}>Manage and deploy new technical labs to the ecosystem.</p>
@@ -119,7 +144,7 @@ export default function ChallengesAdmin() {
                         setIsEditing(false);
                         setFormData({
                             id: "", title: "", description: "", image: "ubuntu:22.04", score: 10, timeLimit: 300, difficulty: "Easy",
-                            tags: [], startScript: "", evaluationScript: ""
+                            tags: [], startupScript: "", endScript: ""
                         });
                         setShowModal(true);
                     }}
@@ -132,9 +157,72 @@ export default function ChallengesAdmin() {
             {loading ? (
                 <div style={{ textAlign: "center", padding: "5rem", color: "#94a3b8" }}>Allocating resources...</div>
             ) : (
-                <div style={gridStyle}>
-                    {challenges.map((c: any) => (
-                        <div key={c.id} className="glass-panel" style={{
+                <>
+                    <div className="mobile-controls" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", gap: "1rem" }}>
+                        <div style={{ flex: 1, maxWidth: "400px" }}>
+                            <input
+                                type="text"
+                                placeholder="Search challenges..."
+                                value={searchTerm}
+                                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                                style={{
+                                    width: "100%",
+                                    background: "rgba(0, 0, 0, 0.3)",
+                                    border: "1px solid var(--panel-border)",
+                                    borderRadius: "6px",
+                                    padding: "0.6rem 1rem",
+                                    color: "white",
+                                    fontSize: "0.9rem",
+                                    outline: "none",
+                                }}
+                            />
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                            <label style={{ fontSize: "0.85rem", color: "#94a3b8", fontWeight: 600 }}>Category:</label>
+                            <select
+                                value={filterCategory}
+                                onChange={(e) => { setFilterCategory(e.target.value); setCurrentPage(1); }}
+                                style={{
+                                    background: "rgba(0, 0, 0, 0.3)",
+                                    border: "1px solid var(--panel-border)",
+                                    borderRadius: "6px",
+                                    padding: "0.4rem 0.8rem",
+                                    color: "white",
+                                    fontSize: "0.85rem",
+                                    outline: "none",
+                                    cursor: "pointer"
+                                }}
+                            >
+                                <option value="All">All Categories</option>
+                                {Array.from(new Set([...availableCategories, ...challenges.flatMap(c => c.tags || [])])).sort().map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                    <div style={gridStyle}>
+                        {(() => {
+                            const searchLower = searchTerm.toLowerCase();
+                            const searchedChallenges = challenges.filter((c: any) => 
+                                !searchTerm || 
+                                c.title?.toLowerCase().includes(searchLower) || 
+                                c.description?.toLowerCase().includes(searchLower)
+                            );
+
+                            const filteredChallenges = filterCategory === "All" 
+                                ? searchedChallenges 
+                                : searchedChallenges.filter((c: any) => c.tags && c.tags.includes(filterCategory));
+
+                            const sortedChallenges = [...filteredChallenges];
+                            
+                            const totalPages = Math.ceil(sortedChallenges.length / ITEMS_PER_PAGE);
+                            const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+                            const paginatedChallenges = sortedChallenges.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+                            return (
+                                <>
+                                    {paginatedChallenges.map((c: any) => (
+                                        <div key={c.id} className="glass-panel" style={{
                             ...cardStyle,
                             opacity: c.locked ? 0.55 : 1,
                             transition: "opacity 0.3s ease"
@@ -194,8 +282,8 @@ export default function ChallengesAdmin() {
                                             timeLimit: c.timeLimit || 300,
                                             difficulty: c.difficulty || "Easy",
                                             tags: c.tags || [],
-                                            startScript: c.startupScript || "",
-                                            evaluationScript: c.endScript || ""
+                                            startupScript: c.startupScript || "",
+                                            endScript: c.endScript || ""
                                         });
                                         setIsEditing(true);
                                         setShowModal(true);
@@ -212,6 +300,27 @@ export default function ChallengesAdmin() {
                                     }}
                                 >
                                     Edit
+                                </button>
+                                <button
+                                    onClick={() => setDeleteModal({ show: true, id: c.id, title: c.title })}
+                                    title="Delete Challenge"
+                                    style={{
+                                        background: "transparent",
+                                        color: "#ef4444",
+                                        border: "1px solid #ef4444",
+                                        padding: "0.4rem 0.6rem",
+                                        borderRadius: "6px",
+                                        fontSize: "0.75rem",
+                                        fontWeight: 700,
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                                    </svg>
                                 </button>
                                 <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "0.5rem" }}>
                                     <span style={{ fontSize: "0.75rem", fontWeight: 600, color: c.locked ? "#ef4444" : "#10b981", letterSpacing: "0.04em", textTransform: "uppercase" }}>
@@ -249,7 +358,44 @@ export default function ChallengesAdmin() {
                             </div>
                         </div>
                     ))}
-                </div>
+                    {totalPages > 1 && (
+                        <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "center", alignItems: "center", gap: "1rem", marginTop: "2rem" }}>
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentPage === 1}
+                                style={{
+                                    ...tagButtonStyle,
+                                    background: currentPage === 1 ? "rgba(255,255,255,0.05)" : "var(--primary)",
+                                    color: currentPage === 1 ? "#64748b" : "#000",
+                                    cursor: currentPage === 1 ? "not-allowed" : "pointer",
+                                    opacity: currentPage === 1 ? 0.5 : 1
+                                }}
+                            >
+                                Previous
+                            </button>
+                            <span style={{ fontSize: "0.85rem", color: "#94a3b8", fontWeight: 600 }}>
+                                Page {currentPage} of {totalPages}
+                            </span>
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                disabled={currentPage === totalPages}
+                                style={{
+                                    ...tagButtonStyle,
+                                    background: currentPage === totalPages ? "rgba(255,255,255,0.05)" : "var(--primary)",
+                                    color: currentPage === totalPages ? "#64748b" : "#000",
+                                    cursor: currentPage === totalPages ? "not-allowed" : "pointer",
+                                    opacity: currentPage === totalPages ? 0.5 : 1
+                                }}
+                            >
+                                Next
+                            </button>
+                        </div>
+                    )}
+                                </>
+                            );
+                        })()}
+                    </div>
+                </>
             )}
 
             {showModal && (
@@ -268,7 +414,7 @@ export default function ChallengesAdmin() {
                                     required
                                 />
                             </div>
-                            <div style={formRowStyle}>
+                            <div className="form-row" style={formRowStyle}>
                                 <div style={formGroupStyle}>
                                     <label style={labelStyle}>Score</label>
                                     <input
@@ -369,8 +515,8 @@ export default function ChallengesAdmin() {
                                 <label style={labelStyle}>Start Script (Shell)</label>
                                 <textarea
                                     style={{ ...inputStyle, minHeight: "80px", fontFamily: "monospace", fontSize: "0.8rem" }}
-                                    value={formData.startScript}
-                                    onChange={e => setFormData({ ...formData, startScript: e.target.value })}
+                                    value={formData.startupScript}
+                                    onChange={e => setFormData({ ...formData, startupScript: e.target.value })}
                                     placeholder="#!/bin/bash\necho 'Hello World' > /tmp/hello"
                                 />
                             </div>
@@ -378,8 +524,8 @@ export default function ChallengesAdmin() {
                                 <label style={labelStyle}>Evaluation Script (Shell)</label>
                                 <textarea
                                     style={{ ...inputStyle, minHeight: "120px", fontFamily: "monospace", fontSize: "0.8rem" }}
-                                    value={formData.evaluationScript}
-                                    onChange={e => setFormData({ ...formData, evaluationScript: e.target.value })}
+                                    value={formData.endScript}
+                                    onChange={e => setFormData({ ...formData, endScript: e.target.value })}
                                     placeholder="#!/bin/bash\nif [ -f /tmp/test ]; then exit 0; else exit 1; fi"
                                 />
                             </div>
@@ -392,13 +538,58 @@ export default function ChallengesAdmin() {
                     </div>
                 </div>
             )}
+
+            {deleteModal.show && (
+                <div style={modalOverlayStyle}>
+                    <div className="glass-panel" style={{ ...modalContentStyle, maxWidth: "400px", textAlign: "center", padding: "2.5rem" }}>
+                        <div style={{ 
+                            width: "60px", height: "60px", borderRadius: "50%", background: "rgba(239, 68, 68, 0.1)", 
+                            display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1.5rem auto",
+                            color: "#ef4444"
+                        }}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                <line x1="10" y1="11" x2="10" y2="17"></line>
+                                <line x1="14" y1="11" x2="14" y2="17"></line>
+                            </svg>
+                        </div>
+                        <h2 style={{ fontSize: "1.2rem", fontWeight: 800, marginBottom: "0.5rem", color: "white" }}>Delete Challenge?</h2>
+                        <p style={{ color: "#94a3b8", fontSize: "0.9rem", marginBottom: "2rem" }}>
+                            Are you sure you want to permanently delete <strong>{deleteModal.title}</strong>? This action cannot be reversed.
+                        </p>
+                        <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
+                            <button 
+                                onClick={confirmDeleteChallenge} 
+                                style={{
+                                    ...saveButtonStyle, 
+                                    background: "#ef4444", 
+                                    color: "white", 
+                                    flex: 1
+                                }}
+                            >
+                                Delete
+                            </button>
+                            <button 
+                                onClick={() => setDeleteModal({ show: false, id: "", title: "" })} 
+                                style={{
+                                    ...cancelButtonStyle,
+                                    flex: 1
+                                }}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
 
 const gridStyle: React.CSSProperties = {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))",
     gap: "1.5rem",
 };
 
