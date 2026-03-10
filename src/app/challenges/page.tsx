@@ -14,7 +14,7 @@ export default function ChallengesAdmin() {
     const [filterCategory, setFilterCategory] = useState("All");
     const [searchTerm, setSearchTerm] = useState("");
     const ITEMS_PER_PAGE = 6;
-    const [availableCategories, setAvailableCategories] = useState<string[]>(["Linux", "Bash", "Docker", "Kubernetes", "Security", "DevOps"]);
+    const [availableCategories, setAvailableCategories] = useState<string[]>(["Linux", "Docker", "Kubernetes", "Security", "DevOps"]);
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({
         id: "",
@@ -194,7 +194,7 @@ export default function ChallengesAdmin() {
                                 }}
                             >
                                 <option value="All">All Categories</option>
-                                {Array.from(new Set([...availableCategories, ...challenges.flatMap(c => c.tags || [])])).sort().map(cat => (
+                                {Array.from(new Set([...availableCategories, ...challenges.flatMap(c => c.tags || [])])).filter(cat => cat !== "Bash").sort().map(cat => (
                                     <option key={cat} value={cat}>{cat}</option>
                                 ))}
                             </select>
