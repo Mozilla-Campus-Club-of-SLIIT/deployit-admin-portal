@@ -10,6 +10,7 @@ export default function Dashboard() {
     totalChallenges: 0,
     activeUsers: 0,
   });
+  const [clusterStatus, setClusterStatus] = useState({ name: "", status: "LOADING" });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,61 +39,159 @@ export default function Dashboard() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    const fetchCluster = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/cluster/status`, { headers: adminAuthHeaders() });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        setClusterStatus(data);
+      } catch (e) {
+        setClusterStatus({ name: "", status: "OFFLINE" });
+      }
+    };
+    fetchCluster();
+    const interval = setInterval(fetchCluster, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleCreateCluster = async () => {
+    if (!confirm("Are you sure you want to create a new GKE cluster? This will incur costs and take 3-5 mins.")) return;
+    try {
+      const res = await fetch(`${API_URL}/api/cluster/create`, { 
+        method: "POST", 
+        headers: adminAuthHeaders() 
+      });
+      if (res.ok) {
+        setClusterStatus({ name: "Initializing...", status: "PROVISIONING" });
+        alert("Cluster creation initiated successfully!");
+      } else {
+        const msg = await res.text();
+        alert("Failed to create cluster: " + msg);
+      }
+    } catch (e) {
+      alert("Network error");
+    }
+  };
+
+  const handleDeleteCluster = async () => {
+    if (!confirm("Are you sure you want to delete the cluster? All active lab sessions will be lost.")) return;
+    try {
+      const res = await fetch(`${API_URL}/api/cluster/delete`, { 
+        method: "POST", 
+        headers: adminAuthHeaders() 
+      });
+      if (res.ok) {
+        setClusterStatus({ name: "", status: "DELETING" });
+        alert("Cluster deletion initiated.");
+      } else {
+        alert("Failed to delete cluster.");
+      }
+    } catch (e) {
+      alert("Network error");
+    }
+  };
+
   return (
-    <div style={containerStyle}>
-      <header style={headerStyle}>
+    <div className="dashboard-container">
+      <header className="dashboard-header">
         <div style={{ animation: "slideIn 0.5s ease" }}>
-          <h1 style={titleStyle}>Admin <span className="text-gradient">Console</span></h1>
+          <h1 className="dashboard-title">Admin <span className="text-gradient">Console</span></h1>
           <p style={subtitleStyle}>Centralized management for the DeployIt.</p>
         </div>
         <div style={dateStyle}>{new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
       </header>
 
-      <section style={statsGridStyle}>
+      <section className="status-grid">
         <StatCard title="Active Challenges" value={stats.totalChallenges} icon="🏆" delay="0.1s" />
         <StatCard title="Registered Users" value={stats.activeUsers} icon="👥" delay="0.2s" />
+        <StatCard 
+          title="Cluster Status" 
+          value={clusterStatus.status} 
+          icon="☁️" 
+          delay="0.3s" 
+          color={
+            clusterStatus.status === "RUNNING" ? "#10b981" : 
+            clusterStatus.status === "OFFLINE" ? "#ef4444" : "#f59e0b"
+          } 
+        />
       </section>
 
+      <section className="glass-panel infra-section">
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <span style={{ fontSize: '1.25rem' }}>🛠️</span> Infrastructure Management
+        </h2>
+        
+        <div className="infra-flex">
+          <div className="infra-info">
+            <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+              Control the GKE cluster lifecycle. Creating a cluster takes approximately 3-5 minutes. 
+              The cluster will automatically be deleted after 45 minutes of inactivity to save costs.
+            </p>
+            {clusterStatus.name && (
+              <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--panel-border)', marginBottom: '1.5rem' }}>
+                <div style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Active Cluster Name</div>
+                <div style={{ color: 'white', fontFamily: 'monospace', fontWeight: 600 }}>{clusterStatus.name}</div>
+              </div>
+            )}
+          </div>
+
+          <div className="infra-actions">
+            <button 
+              onClick={handleCreateCluster}
+              disabled={clusterStatus.status !== "OFFLINE"}
+              className="button-primary"
+              style={{ padding: '1rem', opacity: clusterStatus.status !== "OFFLINE" ? 0.5 : 1 }}
+            >
+              🚀 Create Cluster
+            </button>
+            <button 
+              onClick={handleDeleteCluster}
+              disabled={clusterStatus.status === "OFFLINE" || clusterStatus.status === "DELETING"}
+              className="button-danger"
+              style={{ padding: '1rem', opacity: (clusterStatus.status === "OFFLINE" || clusterStatus.status === "DELETING") ? 0.5 : 1 }}
+            >
+              🗑️ Delete Cluster
+            </button>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
 
-const StatCard = ({ title, value, icon, delay, color }: any) => (
-  <div className="glass-panel" style={{
-    padding: "2.5rem",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: "1rem",
-    animation: `fadeIn 0.5s ease ${delay} backwards`,
-    position: "relative",
-    overflow: "hidden",
-    flex: 1,
-    minWidth: "250px",
-    maxWidth: "400px"
-  }}>
-    <div style={{ fontSize: "2.5rem" }}>{icon}</div>
-    <div style={{ fontSize: "1rem", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em" }}>{title}</div>
-    <div style={{ fontSize: "3.5rem", fontWeight: 900, color: color || "white" }}>{value}</div>
-  </div>
-);
-
-const containerStyle: React.CSSProperties = {
-  maxWidth: "1000px",
-  margin: "0 auto",
-};
-
-const headerStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-end",
-  marginBottom: "3rem",
-};
-
-const titleStyle: React.CSSProperties = {
-  fontSize: "3rem",
-  fontWeight: 900,
-  margin: 0,
+const StatCard = ({ title, value, icon, delay, color }: any) => {
+  const isProvisioning = value === "PROVISIONING";
+  const fontSize = value && value.length > 10 ? "2rem" : "3.5rem";
+  
+  return (
+    <div className="glass-panel" style={{
+      padding: "2.5rem",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: "1rem",
+      animation: isProvisioning ? `pulse 2s infinite ease-in-out, fadeIn 0.5s ease ${delay} backwards` : `fadeIn 0.5s ease ${delay} backwards`,
+      position: "relative",
+      overflow: "hidden",
+      flex: 1,
+      minWidth: "250px",
+      maxWidth: "400px"
+    }}>
+      <div style={{ fontSize: "2.5rem" }}>{icon}</div>
+      <div style={{ fontSize: "1rem", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em" }}>{title}</div>
+      <div style={{ 
+        fontSize: fontSize, 
+        fontWeight: 900, 
+        color: color || "white",
+        textAlign: "center",
+        wordBreak: "break-all",
+        transition: "font-size 0.3s ease"
+      }}>
+        {value}
+      </div>
+    </div>
+  );
 };
 
 const subtitleStyle: React.CSSProperties = {
@@ -109,12 +208,4 @@ const dateStyle: React.CSSProperties = {
   padding: "0.5rem 1rem",
   borderRadius: "20px",
   border: "1px solid var(--panel-border)",
-};
-
-const statsGridStyle: React.CSSProperties = {
-  display: "flex",
-  gap: "2rem",
-  justifyContent: "center",
-  marginBottom: "3rem",
-  flexWrap: "wrap"
 };
