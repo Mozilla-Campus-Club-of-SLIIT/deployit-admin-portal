@@ -29,6 +29,7 @@ const Sidebar = () => {
     const menuItems = [
         { name: "Dashboard", path: "/", icon: "📊" },
         { name: "Challenges", path: "/challenges", icon: "🏆" },
+        { name: "User Base", path: "/users", icon: "👥" },
     ];
 
     return (

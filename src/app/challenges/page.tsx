@@ -26,7 +26,12 @@ export default function ChallengesAdmin() {
         difficulty: "Easy",
         tags: [] as string[],
         startupScript: "",
-        endScript: ""
+        endScript: "",
+        isK8s: false,
+        gen2: false,
+        cpuQuota: "500m",
+        memoryQuota: "512Mi",
+        podQuota: "10"
     });
     const [newCategoryInput, setNewCategoryInput] = useState("");
 
@@ -123,7 +128,12 @@ export default function ChallengesAdmin() {
                     difficulty: "Easy",
                     tags: [],
                     startupScript: "",
-                    endScript: ""
+                    endScript: "",
+                    isK8s: false,
+                    gen2: false,
+                    cpuQuota: "500m",
+                    memoryQuota: "512Mi",
+                    podQuota: "10"
                 });
                 setIsEditing(false);
             }
@@ -144,7 +154,7 @@ export default function ChallengesAdmin() {
                         setIsEditing(false);
                         setFormData({
                             id: "", title: "", description: "", image: "ubuntu:22.04", score: 10, timeLimit: 300, difficulty: "Easy",
-                            tags: [], startupScript: "", endScript: ""
+                            tags: [], startupScript: "", endScript: "", isK8s: false, gen2: false, cpuQuota: "500m", memoryQuota: "512Mi", podQuota: "10"
                         });
                         setShowModal(true);
                     }}
@@ -283,7 +293,12 @@ export default function ChallengesAdmin() {
                                             difficulty: c.difficulty || "Easy",
                                             tags: c.tags || [],
                                             startupScript: c.startupScript || "",
-                                            endScript: c.endScript || ""
+                                            endScript: c.endScript || "",
+                                            isK8s: c.isK8s || false,
+                                            gen2: c.gen2 || false,
+                                            cpuQuota: c.cpuQuota || "500m",
+                                            memoryQuota: c.memoryQuota || "512Mi",
+                                            podQuota: c.podQuota || "10"
                                         });
                                         setIsEditing(true);
                                         setShowModal(true);
@@ -446,6 +461,65 @@ export default function ChallengesAdmin() {
                                     </select>
                                 </div>
                             </div>
+                            <div style={formGroupStyle}>
+                                <label style={labelStyle}>Container Image</label>
+                                <input
+                                    style={inputStyle}
+                                    value={formData.image}
+                                    onChange={e => setFormData({ ...formData, image: e.target.value })}
+                                    placeholder="e.g. ubuntu:22.04 or alpine:latest"
+                                    required
+                                />
+                            </div>
+                            <div style={formGroupStyle}>
+                                <label style={labelStyle}>Infrastructure Target</label>
+                                <select
+                                    style={inputStyle}
+                                    value={formData.isK8s ? "k8s" : "cloudrun-gen2"}
+                                    onChange={e => {
+                                        const val = e.target.value;
+                                        setFormData({
+                                            ...formData,
+                                            isK8s: val === "k8s",
+                                            gen2: val === "cloudrun-gen2"
+                                        });
+                                    }}
+                                >
+                                    <option value="cloudrun-gen2">Cloud Run (Gen 2 Execution)</option>
+                                    <option value="k8s">Kubernetes Cluster (DevOps Labs)</option>
+                                </select>
+                            </div>
+                            {formData.isK8s && (
+                                <div className="form-row" style={formRowStyle}>
+                                    <div style={formGroupStyle}>
+                                        <label style={labelStyle}>CPU Quota</label>
+                                        <input
+                                            style={inputStyle}
+                                            value={formData.cpuQuota}
+                                            onChange={e => setFormData({ ...formData, cpuQuota: e.target.value })}
+                                            placeholder="e.g. 500m"
+                                        />
+                                    </div>
+                                    <div style={formGroupStyle}>
+                                        <label style={labelStyle}>Memory Quota</label>
+                                        <input
+                                            style={inputStyle}
+                                            value={formData.memoryQuota}
+                                            onChange={e => setFormData({ ...formData, memoryQuota: e.target.value })}
+                                            placeholder="e.g. 512Mi"
+                                        />
+                                    </div>
+                                    <div style={formGroupStyle}>
+                                        <label style={labelStyle}>Pod Quota</label>
+                                        <input
+                                            style={inputStyle}
+                                            value={formData.podQuota}
+                                            onChange={e => setFormData({ ...formData, podQuota: e.target.value })}
+                                            placeholder="e.g. 10"
+                                        />
+                                    </div>
+                                </div>
+                            )}
                             <div style={formGroupStyle}>
                                 <label style={labelStyle}>Assign Categories</label>
                                 <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.5rem" }}>

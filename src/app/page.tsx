@@ -13,7 +13,7 @@ export default function Dashboard() {
   const [clusterStatus, setClusterStatus] = useState({ name: "", status: "LOADING" });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+    useEffect(() => {
     const fetchData = async () => {
       try {
         const [challengesRes, usersRes] = await Promise.all([
@@ -21,13 +21,25 @@ export default function Dashboard() {
           fetch(`${API_URL}/api/users`, { headers: adminAuthHeaders() })
         ]);
 
-        const challenges = await challengesRes.json();
-        const usersResText = await usersRes.text();
-        const users = usersResText ? JSON.parse(usersResText) : [];
+        let challenges = [];
+        if (challengesRes.ok) {
+          const contentType = challengesRes.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            challenges = await challengesRes.json();
+          }
+        }
+
+        let users = [];
+        if (usersRes.ok) {
+          const contentType = usersRes.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            users = await usersRes.json();
+          }
+        }
 
         setStats({
-          totalChallenges: challenges?.length || 0,
-          activeUsers: users?.length || 0,
+          totalChallenges: Array.isArray(challenges) ? challenges.length : 0,
+          activeUsers: Array.isArray(users) ? users.length : 0,
         });
       } catch (error) {
         console.error("Failed to fetch dashboard data", error);
@@ -40,19 +52,34 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    const fetchCluster = async () => {
-      try {
-        const res = await fetch(`${API_URL}/api/cluster/status`, { headers: adminAuthHeaders() });
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        setClusterStatus(data);
-      } catch (e) {
+    let ws: WebSocket;
+    const connectWS = () => {
+      const wsUrl = API_URL.replace(/^http/, "ws") + "/api/cluster/status/ws";
+      ws = new WebSocket(wsUrl);
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          setClusterStatus(data);
+        } catch (e) {
+          console.error("WS Parse Error", e);
+        }
+      };
+
+      ws.onerror = () => {
         setClusterStatus({ name: "", status: "OFFLINE" });
-      }
+      };
+
+      ws.onclose = () => {
+        setTimeout(connectWS, 10000); // Reconnect loop if closed
+      };
     };
-    fetchCluster();
-    const interval = setInterval(fetchCluster, 10000);
-    return () => clearInterval(interval);
+
+    connectWS();
+
+    return () => {
+      if (ws) ws.close();
+    };
   }, []);
 
   const handleCreateCluster = async () => {
